@@ -4,12 +4,14 @@ import {
 
 const STRAT_COLORS: Record<string, string> = {
   calldata: "#ef4444",
+  blob: "#3b82f6",
   compressed_calldata: "#f59e0b",
   external_da: "#22c55e",
 };
 
 const TRUST_DATA = [
   { strategy: "calldata", "Data on L1": 5, "Trustless": 5, "Cost Efficiency": 1, "Low Latency": 5 },
+  { strategy: "blob", "Data on L1": 5, "Trustless": 5, "Cost Efficiency": 4, "Low Latency": 5 },
   { strategy: "compressed_calldata", "Data on L1": 5, "Trustless": 5, "Cost Efficiency": 2, "Low Latency": 4 },
   { strategy: "external_da", "Data on L1": 0, "Trustless": 2, "Cost Efficiency": 5, "Low Latency": 3 },
 ];

@@ -9,6 +9,7 @@ interface Props {
 
 export default function Sidebar({ loading, strategies, onRun }: Props) {
   const [gasPrice, setGasPrice] = useState(30);
+  const [blobGasPrice, setBlobGasPrice] = useState(1);
   const [ethPrice, setEthPrice] = useState(3000);
   const [duration, setDuration] = useState(30);
   const [batchMaxKb, setBatchMaxKb] = useState(120);
@@ -18,6 +19,7 @@ export default function Sidebar({ loading, strategies, onRun }: Props) {
   const [tpsSteps, setTpsSteps] = useState(6);
   const [selectedStrats, setSelectedStrats] = useState<string[]>([
     "calldata",
+    "blob",
     "compressed",
     "external",
   ]);
@@ -31,6 +33,7 @@ export default function Sidebar({ loading, strategies, onRun }: Props) {
   const handleRun = () => {
     onRun({
       gas_price_gwei: gasPrice,
+      blob_gas_price_gwei: blobGasPrice,
       eth_price_usd: ethPrice,
       duration_seconds: duration,
       batch_max_kb: batchMaxKb,
@@ -52,6 +55,11 @@ export default function Sidebar({ loading, strategies, onRun }: Props) {
           Gas Price (Gwei)
           <input type="number" value={gasPrice} min={1} max={500}
             onChange={(e) => setGasPrice(Number(e.target.value))} />
+        </label>
+        <label>
+          Blob Gas Price (Gwei)
+          <input type="number" value={blobGasPrice} min={0.001} max={500} step={0.001}
+            onChange={(e) => setBlobGasPrice(Number(e.target.value))} />
         </label>
         <label>
           ETH Price (USD)

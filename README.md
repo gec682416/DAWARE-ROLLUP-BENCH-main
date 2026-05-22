@@ -6,10 +6,12 @@ Data Availability-Aware Rollup Benchmarking Platform. Evaluate how different **D
 
 As rollups scale execution, data availability becomes the primary bottleneck. Publishing all transaction data to Ethereum L1 via calldata guarantees full verifiability but is expensive. Alternative approaches — compressed calldata, external DA layers like Celestia or EigenDA — reduce costs at the expense of additional trust assumptions.
 
+See [`REPORT.md`](REPORT.md) for the benchmark run, result tables, and analysis used to support the project conclusions.
+
 This platform provides:
 
 - A **discrete-event rollup simulator** that models transaction generation, batch building, and DA publication
-- **Three DA strategies**: Ethereum calldata, compressed calldata, and external DA (Celestia/EigenDA cost model)
+- **Four DA strategies**: Ethereum calldata, Ethereum blobs, compressed calldata, and external DA (Celestia/EigenDA cost model)
 - A **FastAPI backend** that wraps the simulator as REST APIs
 - A **React dashboard** (TypeScript + Recharts) with interactive charts for cost, latency, and trust comparison
 - **CLI tool** for running single runs, TPS sweeps, and predefined experiment scenarios
@@ -22,7 +24,6 @@ This platform provides:
 ```bash
 cd DAware-Rollup-Bench
 python -m pip install -e ".[dev]"
-python -m pip install fastapi uvicorn
 ```
 
 **Requirements**: Python 3.10+
@@ -50,7 +51,7 @@ npm --prefix frontend run dev
 Alternatively, run experiments from the CLI without the UI:
 
 ```bash
-# Compare all three strategies at 100 TPS
+# Compare all four strategies at 100 TPS
 python experiments/run_benchmark.py --tps 100 --duration 30
 
 # Run a full TPS sweep
@@ -70,7 +71,8 @@ Options:
   --duration INT         Simulation duration in seconds (default: 120)
   --gas-price FLOAT      Gas price in Gwei (default: 30)
   --eth-price FLOAT      ETH price in USD (default: 3000)
-  --strategies STR       Comma-separated strategies: calldata,compressed,external
+  --blob-gas-price FLOAT Blob gas price in Gwei (default: 1)
+  --strategies STR       Comma-separated strategies: calldata,blob,compressed,external
   --scenario STR         Predefined scenario: baseline, high_gas, low_gas, quick, large_batches
   --tps-sweep            Run full TPS sweep [10, 50, 100, 200, 500, 1000]
   --output PATH          Save aggregated results as JSON
@@ -84,6 +86,7 @@ Options:
 Strategy                  TPS      Txs    Cost/tx    Latency   Comp.R    DA%
 ----------------------------------------------------------------------------
 calldata                  100      300  $1.412566      0.0ms    1.000  96.3%
+blob                      100      300  $0.004369      0.0ms    1.000   4.6%
 compressed_calldata       100      300  $1.415461     1.31ms    0.999  96.3%
 external_da               100      300   $1.9e-05    150.0ms    1.000   0.0%
 ============================================================================
@@ -114,7 +117,7 @@ Vite proxies `/api/*` requests to the backend during development, so no CORS iss
 | Component | Description |
 |-----------|-------------|
 | `Sidebar` | Gas price, ETH price, duration, batch size, TPS range sliders, strategy toggles |
-| `CostChart` | Line chart: DA cost per transaction vs TPS (3 strategies overlaid) |
+| `CostChart` | Line chart: DA cost per transaction vs TPS (4 strategies overlaid) |
 | `LatencyChart` | Line chart: end-to-end confirmation delay vs TPS |
 | `BottleneckChart` | Line chart: DA cost as % of total rollup cost — red line at 50% marks the bottleneck threshold |
 | `TrustRadar` | Radar chart comparing "Data on L1", "Trustless", "Cost Efficiency", "Low Latency" across strategies |
@@ -138,7 +141,7 @@ Interactive API docs: open `http://localhost:8000/docs` while the backend is run
 | `transaction.py` | Transaction model with realistic mixed-size distribution (70/20/10 split) |
 | `batch.py` | Batch builder: serialization, Merkle tree root, zlib compression |
 | `cost_model.py` | Gas calculation, USD conversion, EIP-4844 blob pricing |
-| `da_strategies/` | Abstract base + 3 concrete DA publication strategies |
+| `da_strategies/` | Abstract base + concrete DA publication strategies |
 | `simulator.py` | Discrete-event engine: generate → batch → publish → measure |
 | `metrics.py` | Collector and aggregator with CSV/JSON export |
 
@@ -152,7 +155,15 @@ Full transaction data posted as-is to L1 calldata. Cost model: 16 gas per non-ze
 - **Latency**: None (data on L1, instantly verifiable)
 - **Trust**: None beyond Ethereum L1 security
 
-### 2. Compressed Calldata
+### 2. Ethereum Blob DA (EIP-4844)
+
+Batch data is posted to Ethereum blobs rather than calldata. This keeps DA under Ethereum consensus while using the cheaper blob fee market.
+
+- **Cost**: Lower than calldata under typical blob gas prices
+- **Latency**: No extra off-chain DA confirmation in this model
+- **Trust**: Ethereum DA security, with limited blob retention rather than permanent calldata storage
+
+### 3. Compressed Calldata
 
 Batch data is zlib-compressed before L1 posting. Same trust model as baseline with reduced data footprint.
 
@@ -160,7 +171,7 @@ Batch data is zlib-compressed before L1 posting. Same trust model as baseline wi
 - **Latency**: Sub-millisecond compression overhead
 - **Trust**: Same as baseline
 
-### 3. External DA (Celestia/EigenDA model)
+### 4. External DA (Celestia/EigenDA model)
 
 Data posted to an external DA layer at ~$0.02/MB. The L1 only stores a DA attestation/certificate.
 
@@ -221,6 +232,7 @@ DAware-Rollup-Bench/
 │   ├── cost_model.py                 # Gas / USD / blob cost calculations
 │   ├── da_strategies/
 │   │   ├── base.py                   # Abstract DAStrategy + DAResult
+│   │   ├── blob.py                   # Ethereum blob posting
 │   │   ├── calldata.py               # Ethereum calldata posting
 │   │   ├── compressed.py             # Compressed calldata posting
 │   │   └── external.py               # External DA (Celestia/EigenDA model)

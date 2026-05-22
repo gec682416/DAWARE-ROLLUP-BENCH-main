@@ -25,6 +25,8 @@ class SimulationMetrics:
     total_batch_submission_cost_usd: float = 0.0
     total_data_posting_cost_usd: float = 0.0
     total_wait_time_ms: float = 0.0
+    effective_duration_seconds: float = 0.0
+    wall_clock_runtime_seconds: float = 0.0
 
     avg_cost_per_tx_usd: float = 0.0
     avg_latency_ms: float = 0.0
@@ -47,8 +49,9 @@ class SimulationMetrics:
             self.avg_compression_ratio = sum(
                 r["compression_ratio"] for r in self.records
             ) / len(self.records)
-        if self.duration_seconds > 0:
-            self.effective_throughput_tps = self.total_tx / self.duration_seconds
+        throughput_window = self.effective_duration_seconds or self.duration_seconds
+        if throughput_window > 0:
+            self.effective_throughput_tps = self.total_tx / throughput_window
 
         # DA cost as % of total rollup cost
         # total_cost_usd = data posting cost + batch submission overhead
@@ -62,6 +65,8 @@ class SimulationMetrics:
             "duration_s": self.duration_seconds,
             "total_tx": self.total_tx,
             "total_batches": self.total_batches,
+            "effective_duration_s": round(self.effective_duration_seconds, 4),
+            "wall_clock_runtime_s": round(self.wall_clock_runtime_seconds, 4),
             "total_cost_usd": round(self.total_cost_usd, 6),
             "avg_cost_per_tx_usd": round(self.avg_cost_per_tx_usd, 6),
             "avg_latency_ms": round(self.avg_latency_ms, 2),
@@ -86,11 +91,14 @@ class MetricsCollector:
     """Collects DAResult records and produces aggregated SimulationMetrics."""
 
     def __init__(self, strategy_name: str, tps_target: int,
-                 gas_price_gwei: float = 30.0, eth_price_usd: float = 3000.0):
+                 gas_price_gwei: float = 30.0, eth_price_usd: float = 3000.0,
+                 simulation_duration_seconds: float = 0.0):
         self.strategy_name = strategy_name
         self.tps_target = tps_target
         self._gas_price_gwei = gas_price_gwei
         self._eth_price_usd = eth_price_usd
+        self._simulation_duration_seconds = simulation_duration_seconds
+        self._effective_duration_seconds = simulation_duration_seconds
         self._records: list[DAResult] = []
         self._total_wait_time_ms = 0.0
         self._total_tx_for_wait = 0
@@ -106,6 +114,9 @@ class MetricsCollector:
         import time
         self._end_time = time.time()
 
+    def set_effective_duration_seconds(self, duration_seconds: float):
+        self._effective_duration_seconds = max(duration_seconds, 0.0)
+
     def record(self, result: DAResult, avg_wait_ms: float = 0.0):
         self._records.append((result, avg_wait_ms))
         self._total_wait_time_ms += avg_wait_ms * result.batch_tx_count
@@ -118,6 +129,10 @@ class MetricsCollector:
 
     @property
     def duration_seconds(self) -> float:
+        return self._simulation_duration_seconds
+
+    @property
+    def wall_clock_runtime_seconds(self) -> float:
         if self._start_time and self._end_time:
             return self._end_time - self._start_time
         return 0.0
@@ -160,6 +175,8 @@ class MetricsCollector:
             total_batch_submission_cost_usd=total_batch_overhead,
             total_data_posting_cost_usd=total_data_cost,
             total_wait_time_ms=self._total_wait_time_ms,
+            effective_duration_seconds=self._effective_duration_seconds,
+            wall_clock_runtime_seconds=self.wall_clock_runtime_seconds,
             records=records_data,
         )
         m.compute_aggregates()

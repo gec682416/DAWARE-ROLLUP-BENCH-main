@@ -4,6 +4,8 @@ export interface MetricItem {
   duration_s: number;
   total_tx: number;
   total_batches: number;
+  effective_duration_s: number;
+  wall_clock_runtime_s: number;
   total_cost_usd: number;
   avg_cost_per_tx_usd: number;
   avg_latency_ms: number;
@@ -15,6 +17,7 @@ export interface MetricItem {
 
 export interface SweepRequest {
   gas_price_gwei: number;
+  blob_gas_price_gwei: number;
   eth_price_usd: number;
   duration_seconds: number;
   batch_max_kb: number;

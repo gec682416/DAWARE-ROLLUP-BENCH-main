@@ -4,6 +4,7 @@ import pytest
 
 from da_bench.batch import Batch
 from da_bench.da_strategies import (
+    BlobStrategy,
     CalldataStrategy,
     CompressedCalldataStrategy,
     ExternalDAStrategy,
@@ -75,6 +76,23 @@ class TestCompressedCalldataStrategy:
         z_cost = compressed.publish(sample_batch).cost_usd
         # compressed should always be <= uncompressed
         assert z_cost <= c_cost
+
+
+class TestBlobStrategy:
+    def test_publish_returns_result(self, sample_batch):
+        s = BlobStrategy(blob_gas_price_gwei=1.0, eth_price_usd=3000.0)
+        result = s.publish(sample_batch)
+        assert result.strategy_name == "blob"
+        assert result.batch_tx_count == 50
+        assert result.cost_usd > 0
+        assert result.cost_wei > 0
+        assert result.data_on_l1 is True
+        assert "ethereum_blob_retention_window" in result.trust_assumptions
+
+    def test_blob_cheaper_than_calldata_at_default_prices(self, sample_batch):
+        calldata = CalldataStrategy(gas_price_gwei=30.0, eth_price_usd=3000.0)
+        blob = BlobStrategy(blob_gas_price_gwei=1.0, eth_price_usd=3000.0)
+        assert blob.publish(sample_batch).cost_usd < calldata.publish(sample_batch).cost_usd
 
 
 class TestExternalDAStrategy:

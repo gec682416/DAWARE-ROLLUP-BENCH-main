@@ -29,7 +29,7 @@ def default_config(**overrides) -> SimulationConfig:
 # Pre-built experiment scenarios
 
 SCENARIO_BASELINE = {
-    "description": "Baseline comparison across TPS sweep with 3 DA strategies",
+    "description": "Baseline comparison across TPS sweep with all DA strategies",
     "config": default_config(duration_seconds=120),
     "tps_values": TPS_SWEEP,
     "seeds": [42, 123, 456],  # 3 replicates

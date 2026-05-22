@@ -24,6 +24,7 @@ export default function ResultsTable({ data }: Props) {
               <th>TPS</th>
               <th>Txs</th>
               <th>Batches</th>
+              <th>Eff TPS</th>
               <th>Cost/Tx</th>
               <th>Latency</th>
               <th>Comp.R</th>
@@ -37,6 +38,7 @@ export default function ResultsTable({ data }: Props) {
                 <td>{r.tps_target}</td>
                 <td>{r.total_tx}</td>
                 <td>{r.total_batches}</td>
+                <td>{r.effective_throughput_tps.toFixed(1)}</td>
                 <td>{fmtUsd(r.avg_cost_per_tx_usd)}</td>
                 <td>{r.avg_latency_ms.toFixed(1)}ms</td>
                 <td>{r.avg_compression_ratio.toFixed(3)}</td>

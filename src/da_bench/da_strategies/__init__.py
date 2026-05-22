@@ -1,6 +1,7 @@
 """Data Availability strategies for rollup benchmarking."""
 
 from da_bench.da_strategies.base import DAResult, DAStrategy
+from da_bench.da_strategies.blob import BlobStrategy
 from da_bench.da_strategies.calldata import CalldataStrategy
 from da_bench.da_strategies.compressed import CompressedCalldataStrategy
 from da_bench.da_strategies.external import ExternalDAStrategy
@@ -8,6 +9,7 @@ from da_bench.da_strategies.external import ExternalDAStrategy
 __all__ = [
     "DAResult",
     "DAStrategy",
+    "BlobStrategy",
     "CalldataStrategy",
     "CompressedCalldataStrategy",
     "ExternalDAStrategy",

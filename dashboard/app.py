@@ -13,6 +13,7 @@ import streamlit as st
 
 from da_bench.config import SimulationConfig
 from da_bench.da_strategies import (
+    BlobStrategy,
     CalldataStrategy,
     CompressedCalldataStrategy,
     ExternalDAStrategy,
@@ -29,6 +30,7 @@ st.set_page_config(
 st.sidebar.title("Simulation Parameters")
 
 gas_price = st.sidebar.slider("Gas Price (Gwei)", 5.0, 200.0, 30.0, 5.0)
+blob_gas_price = st.sidebar.slider("Blob Gas Price (Gwei)", 0.001, 50.0, 1.0, 0.001)
 eth_price = st.sidebar.slider("ETH Price (USD)", 1000, 8000, 3000, 100)
 duration = st.sidebar.slider("Duration per run (s)", 10, 300, 60, 10)
 batch_max_kb = st.sidebar.slider("Max Batch Size (KB)", 32, 512, 120, 32)
@@ -37,6 +39,7 @@ batch_interval = st.sidebar.slider("Max Batch Interval (ms)", 500, 10000, 2000, 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### DA Strategies")
 use_calldata = st.sidebar.checkbox("Calldata (baseline)", True)
+use_blob = st.sidebar.checkbox("Ethereum Blob DA", True)
 use_compressed = st.sidebar.checkbox("Compressed Calldata", True)
 use_external = st.sidebar.checkbox("External DA", True)
 
@@ -69,16 +72,20 @@ def _build_strategies(cfg):
     strategies = []
     if use_calldata:
         strategies.append(CalldataStrategy(cfg.gas_price_gwei, cfg.eth_price_usd))
+    if use_blob:
+        strategies.append(BlobStrategy(cfg.blob_gas_price_gwei, cfg.eth_price_usd))
     if use_compressed:
         strategies.append(CompressedCalldataStrategy(cfg.gas_price_gwei, cfg.eth_price_usd))
     if use_external:
-        strategies.append(ExternalDAStrategy())
+        strategies.append(ExternalDAStrategy(
+            cost_per_mb=cfg.external_da_cost_per_mb,
+            confirmation_delay_ms=cfg.external_da_delay_ms,
+        ))
     return strategies
 
 
 if run:
-    strategies = _build_strategies(None)  # temp check
-    if not strategies:
+    if not any([use_calldata, use_blob, use_compressed, use_external]):
         st.error("Select at least one DA strategy.")
     else:
         tps_values = [int(tps_min + (tps_max - tps_min) * i / (n_points - 1))
@@ -87,6 +94,7 @@ if run:
 
         cfg = SimulationConfig(
             gas_price_gwei=gas_price,
+            blob_gas_price_gwei=blob_gas_price,
             eth_price_usd=eth_price,
             duration_seconds=duration,
             batch_max_bytes=batch_max_kb * 1024,
@@ -237,6 +245,14 @@ if st.session_state.results_df is not None:
                 "L1 Enforcement": 0,
                 "Cost Efficiency": 5,
             })
+        elif s == "blob":
+            trust_data.append({
+                "Strategy": s,
+                "Data on L1": 5,
+                "Trustless Verification": 5,
+                "L1 Enforcement": 5,
+                "Cost Efficiency": 4,
+            })
         else:
             trust_data.append({
                 "Strategy": s,
@@ -299,6 +315,7 @@ else:
     | Strategy | Cost Model | Trust Model |
     |----------|-----------|-------------|
     | **Calldata** | 16 gas/non-zero byte, 4 gas/zero byte | Full L1 security |
+    | **Ethereum Blob DA** | EIP-4844 blob gas market | Ethereum DA, limited retention window |
     | **Compressed Calldata** | Same gas model, zlib-compressed data | Full L1 security |
     | **External DA** | ~$0.02/MB (Celestia model) + 150ms delay | External validator trust |
     """)

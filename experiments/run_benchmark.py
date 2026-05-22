@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(_project_root) / "src"))
 
 from da_bench.config import SimulationConfig
 from da_bench.da_strategies import (
+    BlobStrategy,
     CalldataStrategy,
     CompressedCalldataStrategy,
     ExternalDAStrategy,
@@ -23,6 +24,7 @@ from experiments.scenarios import ALL_SCENARIOS
 
 STRATEGY_REGISTRY = {
     "calldata": CalldataStrategy,
+    "blob": BlobStrategy,
     "compressed": CompressedCalldataStrategy,
     "external": ExternalDAStrategy,
 }
@@ -37,7 +39,15 @@ def build_strategies(names: list[str], config: SimulationConfig):
             print(f"Unknown strategy: {name}. Options: {list(STRATEGY_REGISTRY)}")
             sys.exit(1)
         if name == "external":
-            strategies.append(cls())
+            strategies.append(cls(
+                cost_per_mb=config.external_da_cost_per_mb,
+                confirmation_delay_ms=config.external_da_delay_ms,
+            ))
+        elif name == "blob":
+            strategies.append(cls(
+                blob_gas_price_gwei=config.blob_gas_price_gwei,
+                eth_price_usd=config.eth_price_usd,
+            ))
         else:
             strategies.append(cls(
                 gas_price_gwei=config.gas_price_gwei,
@@ -85,8 +95,12 @@ def main():
         help="ETH price in USD (default: 3000)"
     )
     parser.add_argument(
-        "--strategies", type=str, default="calldata,compressed,external",
-        help="Comma-separated DA strategies (default: calldata,compressed,external)"
+        "--blob-gas-price", type=float, default=1.0,
+        help="Blob gas price in Gwei (default: 1)"
+    )
+    parser.add_argument(
+        "--strategies", type=str, default="calldata,blob,compressed,external",
+        help="Comma-separated DA strategies (default: calldata,blob,compressed,external)"
     )
     parser.add_argument(
         "--scenario", type=str,
@@ -153,6 +167,7 @@ def main():
         cfg = SimulationConfig(
             gas_price_gwei=args.gas_price,
             eth_price_usd=args.eth_price,
+            blob_gas_price_gwei=args.blob_gas_price,
             duration_seconds=args.duration,
         )
         strat_names = args.strategies.split(",")
@@ -178,6 +193,7 @@ def main():
     cfg = SimulationConfig(
         gas_price_gwei=args.gas_price,
         eth_price_usd=args.eth_price,
+        blob_gas_price_gwei=args.blob_gas_price,
         tps=args.tps,
         duration_seconds=args.duration,
     )

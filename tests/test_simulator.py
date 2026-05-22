@@ -4,6 +4,7 @@ import pytest
 
 from da_bench.config import SimulationConfig
 from da_bench.da_strategies import (
+    BlobStrategy,
     CalldataStrategy,
     CompressedCalldataStrategy,
     ExternalDAStrategy,
@@ -32,7 +33,7 @@ class TestRunSimulation:
 
     def test_all_strategies_run(self):
         cfg = SimulationConfig(tps=20, duration_seconds=1)
-        for strat_cls in [CalldataStrategy, CompressedCalldataStrategy, ExternalDAStrategy]:
+        for strat_cls in [CalldataStrategy, BlobStrategy, CompressedCalldataStrategy, ExternalDAStrategy]:
             strat = strat_cls()
             metrics = run_simulation(cfg, strat, seed=42)
             assert metrics.total_tx > 0
@@ -52,13 +53,14 @@ class TestRunComparison:
         cfg = SimulationConfig(tps=30, duration_seconds=1)
         strategies = [
             CalldataStrategy(),
+            BlobStrategy(),
             CompressedCalldataStrategy(),
             ExternalDAStrategy(),
         ]
         results = run_comparison(cfg, strategies, seed=42)
-        assert len(results) == 3
+        assert len(results) == 4
         names = {r.strategy_name for r in results}
-        assert names == {"calldata", "compressed_calldata", "external_da"}
+        assert names == {"calldata", "blob", "compressed_calldata", "external_da"}
 
     def test_comparison_same_seed_fair(self):
         """All strategies should see the same total tx count (shared seed)."""

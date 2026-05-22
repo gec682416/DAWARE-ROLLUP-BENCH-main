@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 from da_bench.config import SimulationConfig
 from da_bench.da_strategies import (
+    BlobStrategy,
     CalldataStrategy,
     CompressedCalldataStrategy,
     ExternalDAStrategy,
@@ -15,6 +16,7 @@ router = APIRouter(prefix="/api", tags=["simulation"])
 
 AVAILABLE_STRATEGIES = {
     "calldata": CalldataStrategy,
+    "blob": BlobStrategy,
     "compressed": CompressedCalldataStrategy,
     "external": ExternalDAStrategy,
 }
@@ -22,6 +24,7 @@ AVAILABLE_STRATEGIES = {
 
 class SweepRequest(BaseModel):
     gas_price_gwei: float = Field(default=30.0, ge=1.0, le=500.0, description="Gas price in Gwei")
+    blob_gas_price_gwei: float = Field(default=1.0, ge=0.001, le=500.0, description="Blob gas price in Gwei")
     eth_price_usd: float = Field(default=3000.0, ge=100.0, le=20000.0, description="ETH price in USD")
     duration_seconds: int = Field(default=30, ge=5, le=600, description="Simulation duration per TPS point")
     batch_max_kb: int = Field(default=120, ge=16, le=1024, description="Max batch size in KB")
@@ -30,7 +33,7 @@ class SweepRequest(BaseModel):
     tps_max: int = Field(default=1000, ge=10, le=10000)
     tps_steps: int = Field(default=6, ge=2, le=12, description="Number of TPS points in sweep")
     strategies: list[str] = Field(
-        default=["calldata", "compressed", "external"],
+        default=["calldata", "blob", "compressed", "external"],
         description="DA strategies to compare"
     )
 
@@ -41,6 +44,8 @@ class MetricItem(BaseModel):
     duration_s: float
     total_tx: int
     total_batches: int
+    effective_duration_s: float
+    wall_clock_runtime_s: float
     total_cost_usd: float
     avg_cost_per_tx_usd: float
     avg_latency_ms: float
@@ -66,6 +71,7 @@ def run_sweep(req: SweepRequest):
     """Run a TPS sweep across the selected DA strategies."""
     cfg = SimulationConfig(
         gas_price_gwei=req.gas_price_gwei,
+        blob_gas_price_gwei=req.blob_gas_price_gwei,
         eth_price_usd=req.eth_price_usd,
         duration_seconds=req.duration_seconds,
         batch_max_bytes=req.batch_max_kb * 1024,
@@ -78,7 +84,15 @@ def run_sweep(req: SweepRequest):
         if cls is None:
             continue
         if name == "external":
-            strategies.append(cls())
+            strategies.append(cls(
+                cost_per_mb=cfg.external_da_cost_per_mb,
+                confirmation_delay_ms=cfg.external_da_delay_ms,
+            ))
+        elif name == "blob":
+            strategies.append(cls(
+                blob_gas_price_gwei=req.blob_gas_price_gwei,
+                eth_price_usd=req.eth_price_usd,
+            ))
         else:
             strategies.append(cls(
                 gas_price_gwei=req.gas_price_gwei,
@@ -110,6 +124,11 @@ def list_strategies():
             name="calldata",
             label="Calldata (Baseline)",
             description="Full L1 calldata posting. Maximum security, highest cost.",
+        ),
+        StrategyInfo(
+            name="blob",
+            label="Ethereum Blob DA",
+            description="EIP-4844 blob posting. Ethereum DA security, separate blob fee market.",
         ),
         StrategyInfo(
             name="compressed",

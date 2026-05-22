@@ -10,6 +10,7 @@ interface Props {
 
 const STRAT_COLORS: Record<string, string> = {
   calldata: "#ef4444",
+  blob: "#3b82f6",
   compressed_calldata: "#f59e0b",
   external_da: "#22c55e",
 };

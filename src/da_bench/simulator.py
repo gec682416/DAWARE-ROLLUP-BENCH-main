@@ -26,6 +26,7 @@ def run_simulation(
         strategy.name, config.tps,
         gas_price_gwei=config.gas_price_gwei,
         eth_price_usd=config.eth_price_usd,
+        simulation_duration_seconds=config.duration_seconds,
     )
 
     # Generate transactions
@@ -40,13 +41,21 @@ def run_simulation(
 
     # Publish each batch through the DA strategy
     collector.start()
+    first_tx_time = txs[0].timestamp if txs else 0.0
+    latest_completion_time = first_tx_time + config.duration_seconds
     for batch in batches:
         result = strategy.publish(batch)
+        latest_completion_time = max(
+            latest_completion_time,
+            batch.created_at + result.total_latency_ms / 1000,
+        )
         # Compute average wait time for transactions in this batch
         wait_sum = sum(batch.created_at - tx.timestamp for tx in batch.transactions)
         avg_wait_ms = (wait_sum / batch.tx_count) * 1000 if batch.tx_count > 0 else 0.0
         collector.record(result, avg_wait_ms=avg_wait_ms)
     collector.stop()
+    if txs:
+        collector.set_effective_duration_seconds(latest_completion_time - first_tx_time)
 
     return collector.aggregate()
 
@@ -87,10 +96,19 @@ def run_experiment_matrix(
         config = SimulationConfig(
             gas_price_gwei=base_config.gas_price_gwei,
             eth_price_usd=base_config.eth_price_usd,
+            blob_gas_price_gwei=base_config.blob_gas_price_gwei,
             tps=tps,
             duration_seconds=base_config.duration_seconds,
+            pct_small=base_config.pct_small,
+            small_size_range=base_config.small_size_range,
+            pct_medium=base_config.pct_medium,
+            medium_size_range=base_config.medium_size_range,
+            pct_large=base_config.pct_large,
+            large_size_range=base_config.large_size_range,
             batch_max_bytes=base_config.batch_max_bytes,
             batch_max_interval_ms=base_config.batch_max_interval_ms,
+            external_da_cost_per_mb=base_config.external_da_cost_per_mb,
+            external_da_delay_ms=base_config.external_da_delay_ms,
         )
         for seed in seeds:
             batch_results = run_comparison(config, strategies, seed=seed)

@@ -33,11 +33,14 @@ def blob_count(data_size: int) -> int:
     return math.ceil(data_size / MAX_BLOB_SIZE)
 
 
+def blob_gas(data_size: int) -> int:
+    """Total blob gas for a given data size."""
+    return blob_count(data_size) * GAS_PER_BLOB
+
+
 def blob_cost_usd(data_size: int, blob_gas_price_gwei: float, eth_price_usd: float) -> float:
     """Cost in USD to post data via EIP-4844 blobs."""
-    blobs = blob_count(data_size)
-    total_gas = blobs * GAS_PER_BLOB
-    return gas_to_usd(total_gas, blob_gas_price_gwei, eth_price_usd)
+    return gas_to_usd(blob_gas(data_size), blob_gas_price_gwei, eth_price_usd)
 
 
 def external_da_cost_usd(data_size_bytes: int, cost_per_mb: float) -> float:

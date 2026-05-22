@@ -10,6 +10,7 @@ export function useSimulation() {
   const [results, setResults] = useState<MetricItem[]>([]);
   const [strategies, setStrategies] = useState<StrategyInfo[]>([
     { name: "calldata", label: "Calldata", description: "" },
+    { name: "blob", label: "Ethereum Blob DA", description: "" },
     { name: "compressed", label: "Compressed", description: "" },
     { name: "external", label: "External DA", description: "" },
   ]);
