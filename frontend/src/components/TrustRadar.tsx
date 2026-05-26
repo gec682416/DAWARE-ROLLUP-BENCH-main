@@ -9,6 +9,13 @@ const STRAT_COLORS: Record<string, string> = {
   external_da: "#22c55e",
 };
 
+const DIMENSION_COLORS: Record<string, string> = {
+  "Data on L1": "#3b82f6",
+  "Trustless": "#22c55e",
+  "Cost Efficiency": "#f59e0b",
+  "Low Latency": "#ef4444",
+};
+
 const TRUST_DATA = [
   { strategy: "calldata", "Data on L1": 5, "Trustless": 5, "Cost Efficiency": 1, "Low Latency": 5 },
   { strategy: "blob", "Data on L1": 5, "Trustless": 5, "Cost Efficiency": 4, "Low Latency": 5 },
@@ -38,8 +45,8 @@ export default function TrustRadar({ activeStrategies }: Props) {
           <PolarRadiusAxis angle={30} domain={[0, 5]} />
           {["Data on L1", "Trustless", "Cost Efficiency", "Low Latency"].map((axis) => (
             <Radar key={axis} name={axis} dataKey={axis}
-              stroke={STRAT_COLORS[filtered[0]?.strategy] || "#888"}
-              fill={STRAT_COLORS[filtered[0]?.strategy] || "#888"}
+              stroke={DIMENSION_COLORS[axis] || "#888"}
+              fill={DIMENSION_COLORS[axis] || "#888"}
               fillOpacity={0.15} />
           ))}
           <Legend />
